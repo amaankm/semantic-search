@@ -27,3 +27,4 @@ __pycache__/
 .env.*
 !.env.example
 patents.tsv
+volumes

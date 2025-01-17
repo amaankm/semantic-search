@@ -1,9 +1,12 @@
-import { initPinecone } from "~/utils/pinecone";
+import { initMilvus } from "~/utils/milvus";
 import { getEmbedding } from "~/utils/embedding";
 
 interface SearchParams {
   q: string;
-  limit?: string;
+  limit: number;
+  cited: number;
+  min_year: number;
+  max_year: number;
 }
 
 export default defineEventHandler(async (event) => {
@@ -17,17 +20,18 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    const pinecone = await initPinecone();
-    const index = pinecone.index("semantic-search");
+    const milvus = await initMilvus();
+
     const embedding = await getEmbedding(query.q);
 
-    const results = await index.query({
-      vector: embedding,
-      topK: parseInt(query.limit || "10"),
-      includeMetadata: true,
+    const results = await milvus.search({
+      collection_name: "papers_collection",
+      data: embedding,
+      limit: query.limit,
+      filter: `cited_by_count >= ${query.cited} and publication_year >= ${query.min_year} and publication_year <= ${query.max_year}`,
     });
 
-    return results.matches;
+    return results.results;
   } catch (error: any) {
     throw createError({
       statusCode: error.statusCode || 500,
